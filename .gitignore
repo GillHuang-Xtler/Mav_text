@@ -1,0 +1,15 @@
+*.log
+*.pyc
+/data_loaders
+/data
+/default_models
+/venv
+/logs
+/res
+/__pycache__
+/.idea
+/.ipynb_checkpoints
+/.vector_cache
+res.zip
+requirements.pip
+note.ipynb
