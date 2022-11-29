@@ -4,8 +4,6 @@
 /data
 /default_models
 /venv
-/logs
-/res
 /__pycache__
 /.idea
 /.ipynb_checkpoints
