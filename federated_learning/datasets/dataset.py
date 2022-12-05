@@ -100,6 +100,35 @@ class Dataset:
 		return DataLoader(dataset, batch_size=batch_size, **kwargs)
 
 	@staticmethod
+	def get_textdata_loader_from_data(batch_size, X, Y, Z, **kwargs):
+		"""
+		Get a data loader created from a given set of data.
+
+		:param batch_size: batch size of data loader
+		:type batch_size: int
+		:param X: data features
+		:type X: numpy.Array()
+		:param Y: data labels
+		:type Y: numpy.Array()
+		:return: torch.utils.data.DataLoader
+		"""
+		X_torch = torch.from_numpy(X).float()
+
+		if "classification_problem" in kwargs and kwargs["classification_problem"] == False:
+			Y_torch = torch.from_numpy(Y).float()
+			Z_torch = torch.from_numpy(Z).float()
+		else:
+			Y_torch = torch.from_numpy(Y).long()
+			Z_torch = torch.from_numpy(Z).long()
+
+		print(X_torch.shape, Y_torch.shape, Z_torch.shape)
+		dataset = TensorDataset(X_torch, Y_torch, Z_torch)
+
+		kwargs.pop("classification_problem", None)
+
+		return DataLoader(dataset, batch_size=batch_size, **kwargs)
+
+	@staticmethod
 	def get_tuple_from_data_loader(data_loader):
 		"""
 		Get a tuple representation of the data stored in a data loader.
@@ -109,3 +138,14 @@ class Dataset:
 		:return: tuple
 		"""
 		return (next(iter(data_loader))[0].numpy(), next(iter(data_loader))[1].numpy())
+
+	@staticmethod
+	def get_tuple_from_textdata_loader(data_loader):
+		"""
+		Get a tuple representation of the data stored in a data loader.
+
+		:param data_loader: data loader to get data from
+		:type data_loader: torch.utils.data.DataLoader
+		:return: tuple
+		"""
+		return (next(iter(data_loader))[1].numpy(), next(iter(data_loader))[0].numpy(), next(iter(data_loader))[2].numpy())

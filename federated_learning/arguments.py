@@ -6,6 +6,7 @@ from .nets import Cifar10ResNet
 from .nets import Cifar100VGG
 from .nets import MNISTCNN
 from .nets import STL10VGG
+from .nets import AGNewsFastText
 from .worker_selection import BeforeBreakpoint
 from .worker_selection import AfterBreakpoint
 from .worker_selection import PoisonerProbability
@@ -22,10 +23,10 @@ class Arguments:
     def __init__(self, logger):
         self.logger = logger
 
-        self.batch_size = 4
+        self.batch_size = 64
         self.test_batch_size = 1000
-        self.epochs = 200
-        self.lr = 0.001
+        self.epochs = 10
+        self.lr = 5
         self.momentum = 0.9
         self.cuda = False
         self.shuffle = False
@@ -53,21 +54,21 @@ class Arguments:
         # self.net = MNISTCNN
         # self.net = Cifar10CNN
         # self.net = Cifar10ResNet
-        self.net = FashionMNISTCNN
+        # self.net = FashionMNISTCNN
         # self.net = FashionMNISTResNet
         # self.net = Cifar100ResNet
         # self.net = Cifar100VGG
         # self.net = STL10VGG
-
+        self.net = AGNewsFastText
 
         # self.train_data_loader_pickle_path = "data_loaders/mnist/train_data_loader.pickle"
         # self.test_data_loader_pickle_path = "data_loaders/mnist/test_data_loader.pickle"
 
         # self.train_data_loader_pickle_path = "data_loaders/cifar10/train_data_loader.pickle"
         # self.test_data_loader_pickle_path = "data_loaders/cifar10/test_data_loader.pickle"
-        #
-        self.train_data_loader_pickle_path = "data_loaders/fashion-mnist/train_data_loader.pickle"
-        self.test_data_loader_pickle_path = "data_loaders/fashion-mnist/test_data_loader.pickle"
+
+        # self.train_data_loader_pickle_path = "data_loaders/fashion-mnist/train_data_loader.pickle"
+        # self.test_data_loader_pickle_path = "data_loaders/fashion-mnist/test_data_loader.pickle"
 
         # self.train_data_loader_pickle_path = "data_loaders/stl10/train_data_loader.pickle"
         # self.test_data_loader_pickle_path = "data_loaders/stl10/test_data_loader.pickle"
@@ -75,11 +76,19 @@ class Arguments:
         # self.train_data_loader_pickle_path = "data_loaders/cifar100/train_data_loader.pickle"
         # self.test_data_loader_pickle_path = "data_loaders/cifar100/test_data_loader.pickle"
 
+        self.train_data_loader_pickle_path = "data_loaders/AGNews/train_small_data_loader.pickle"
+        self.test_data_loader_pickle_path = "data_loaders/AGNews/test_data_loader.pickle"
+
         self.loss_function = torch.nn.CrossEntropyLoss
 
         self.default_model_folder_path = "default_models"
 
         self.data_path = "data"
+
+        self.word2vec_dir = "./data/AG_News/glove.6B.300d.txt"
+
+        self.net_dir = "model/ag_fasttext_model.pkl"
+
 
     def get_round_worker_selection_strategy(self):
         return self.round_worker_selection_strategy

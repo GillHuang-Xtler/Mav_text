@@ -79,7 +79,10 @@ class Client:
         :param model_file_path: string
         """
         model_class = self.args.get_net()
-        model = model_class()
+        if self.args.test_data_loader_pickle_path == "data_loaders/AGNews/test_data_loader.pickle":
+            model = model_class(vocab_size = 95810, embed_dim = 64, num_class = 4)
+        else:
+            model = model_class()
 
         if os.path.exists(model_file_path):
             try:
@@ -149,11 +152,10 @@ class Client:
             diff = diff * diff
             reg += torch.sqrt(torch.sum(diff).float())
         loss += (0.5 * mu * reg)
-        print("hello")
 
         return loss
 
-    def train(self, epoch, use_fedprox = True):
+    def train(self, epoch, use_fedprox = False):
         """
         :param epoch: Current epoch #
         :type epoch: int
@@ -164,31 +166,66 @@ class Client:
         if self.args.should_save_model(epoch):
             self.save_model(epoch, self.args.get_epoch_save_start_suffix())
 
-        running_loss = 0.0
-        for i, (inputs, labels) in enumerate(self.train_data_loader, 0):
-            inputs, labels = inputs.to(self.device), labels.to(self.device)
+        if self.args.test_data_loader_pickle_path != "data_loaders/AGNews/test_data_loader.pickle":
 
-            # zero the parameter gradients
-            self.optimizer.zero_grad()
+            running_loss = 0.0
+            for i, (inputs, labels) in enumerate(self.train_data_loader,0):
+                inputs, labels = inputs.to(self.device), labels.to(self.device)
 
-            # forward + backward + optimize
-            outputs = self.net(inputs)
+                # zero the parameter gradients
+                self.optimizer.zero_grad()
 
-            if not use_fedprox:
-                loss = self.loss_function(outputs, labels)
-            else:
-                loss = self.fedprox_loss(outputs, labels, self.net.state_dict(), self.new_params)
-            loss.backward()
-            self.optimizer.step()
+                # forward + backward + optimize
+                outputs = self.net(inputs)
 
-            # print statistics
-            running_loss += loss.item()
-            if i % self.args.get_log_interval() == 0:
-                self.args.get_logger().info('[%d, %5d] loss: %.3f' % (epoch, i, running_loss / self.args.get_log_interval()))
+                if not use_fedprox:
+                    loss = self.loss_function(outputs, labels)
+                else:
+                    self.args.get_logger().info('Use fedprox loss')
+                    loss = self.fedprox_loss(outputs, labels, self.net.state_dict(), self.new_params)
+                loss.backward()
+                self.optimizer.step()
 
-                running_loss = 0.0
+                # print statistics
+                running_loss += loss.item()
+                if i % self.args.get_log_interval() == 0:
+                    self.args.get_logger().info('[%d, %5d] loss: %.3f' % (epoch, i, running_loss / self.args.get_log_interval()))
 
-        self.scheduler.step()
+                    running_loss = 0.0
+
+            self.scheduler.step()
+        else:
+            running_loss = 0.0
+            for i, (inputs, labels, offsets) in enumerate(self.train_data_loader):
+                try:
+                    inputs, labels, offsets = inputs.to(self.device), labels.to(self.device), offsets.to(self.device)
+
+                    # zero the parameter gradients
+                    self.optimizer.zero_grad()
+
+                    # forward + backward + optimize
+                    outputs = self.net(inputs.type(torch.IntTensor), offsets.type(torch.IntTensor))
+
+                    if not use_fedprox:
+                        loss = self.loss_function(outputs, labels)
+                    else:
+                        self.args.get_logger().info('Use fedprox loss')
+                        loss = self.fedprox_loss(outputs, labels, self.net.state_dict(), self.new_params)
+                    loss.backward()
+                    self.optimizer.step()
+
+                    # print statistics
+                    running_loss += loss.item()
+                    if i % self.args.get_log_interval() == 0:
+                        self.args.get_logger().info(
+                            '[%d, %5d] loss: %.3f' % (epoch, i, running_loss / self.args.get_log_interval()))
+
+                        running_loss = 0.0
+                except:
+                    continue
+
+            self.scheduler.step()
+
 
         # save model
         if self.args.should_save_model(epoch):
@@ -228,19 +265,34 @@ class Client:
         targets_ = []
         pred_ = []
         loss = 0.0
-        with torch.no_grad():
-            for (images, labels) in self.test_data_loader:
-                images, labels = images.to(self.device), labels.to(self.device)
+        if self.args.test_data_loader_pickle_path == "data_loaders/AGNews/test_data_loader.pickle":
+            with torch.no_grad():
+                for (images, labels, offsets) in self.test_data_loader:
+                    images, labels, offsets = images.to(self.device), labels.to(self.device), offsets.to(self.device)
 
-                outputs = self.net(images)
-                _, predicted = torch.max(outputs.data, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
+                    outputs = self.net(images, offsets)
+                    _, predicted = torch.max(outputs.data, 1)
+                    total += labels.size(0)
+                    correct += (predicted == labels).sum().item()
 
-                targets_.extend(labels.cpu().view_as(predicted).numpy())
-                pred_.extend(predicted.cpu().numpy())
+                    targets_.extend(labels.cpu().view_as(predicted).numpy())
+                    pred_.extend(predicted.cpu().numpy())
 
-                loss += self.loss_function(outputs, labels).item()
+                    loss += self.loss_function(outputs, labels).item()
+        else:
+            with torch.no_grad():
+                for (images, labels) in self.test_data_loader:
+                    images, labels = images.to(self.device), labels.to(self.device)
+
+                    outputs = self.net(images)
+                    _, predicted = torch.max(outputs.data, 1)
+                    total += labels.size(0)
+                    correct += (predicted == labels).sum().item()
+
+                    targets_.extend(labels.cpu().view_as(predicted).numpy())
+                    pred_.extend(predicted.cpu().numpy())
+
+                    loss += self.loss_function(outputs, labels).item()
 
         accuracy = 100 * correct / total
         confusion_mat = confusion_matrix(targets_, pred_)

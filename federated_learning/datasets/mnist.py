@@ -15,6 +15,9 @@ class MNISTDataset(Dataset):
         train_loader = DataLoader(train_dataset, batch_size=len(train_dataset))
 
         train_data = self.get_tuple_from_data_loader(train_loader)
+        print(train_data[0].shape)
+        print(len(train_data[0]))
+        print(len(train_data))
 
         self.get_args().get_logger().debug("Finished loading MNIST train data")
 

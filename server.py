@@ -3,10 +3,11 @@ import torch
 import time
 from federated_learning.arguments import Arguments
 from federated_learning.utils import generate_data_loaders_from_distributed_dataset
-from federated_learning.datasets.data_distribution import distribute_batches_equally, distribute_batches_reduce_1,distribute_batches_reduce_1_plus, distribute_batches_reduce_2_plusM,distribute_batches_reduce_2_plus, distribute_batches_reduce_3_plus, distribute_batches_reduce_3_plusM, distribute_batches_bias
+from federated_learning.utils import generate_textdata_loaders_from_distributed_dataset
+from federated_learning.datasets.data_distribution import distribute_batches_equally, distribute_batches_reduce_1,distribute_batches_reduce_1_plus, distribute_batches_reduce_2_plusM,distribute_batches_reduce_2_plus, distribute_batches_reduce_3_plus, distribute_batches_reduce_3_plusM, distribute_batches_bias, distribute_text_batches_equally
 from federated_learning.utils import average_nn_parameters, fed_average_nn_parameters
 from federated_learning.utils import average_nn_parameters
-from federated_learning.utils import convert_distributed_data_into_numpy
+from federated_learning.utils import convert_distributed_data_into_numpy, convert_distributed_textdata_into_numpy
 from federated_learning.utils import poison_data
 from federated_learning.utils import identify_random_elements, identify_random_elements_inc_49
 from federated_learning.utils import save_results
@@ -21,7 +22,14 @@ import plot
 import random
 import numpy as np
 from federated_learning.worker_selection.random import RandomSelectionStrategy
-
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import os
+import logging
+import pandas as pd
+from torchtext import data
+from torchtext.vocab import Vectors
 
 def norm(dis):
     a = dis[9] / 120
@@ -404,25 +412,49 @@ def run_exp(replacement_method, num_poisoned_workers, KWARGS, client_selection_s
     args.log()
 
     train_data_loader = load_train_data_loader(logger, args)
-
     test_data_loader = load_test_data_loader(logger, args)
+    print("Finished loading data aaaaaaaaaaaaaaaaaaa")
+    # for i, (data, label, offsets) in enumerate(train_data_loader):
+    #     print(i, (data, label, offsets))
+
+    # AG NEWS text dataset
+    if args.test_data_loader_pickle_path == "data_loaders/AGNews/test_data_loader.pickle":
+        distributed_train_dataset = distribute_text_batches_equally(train_data_loader, args.get_num_workers())
+        # distributed_train_dataset = convert_distributed_textdata_into_numpy(distributed_train_dataset)
+        poisoned_workers = identify_random_elements(args.get_num_workers(), args.get_num_poisoned_workers())
+        # distributed_train_dataset = poison_data(logger, distributed_train_dataset, args.get_num_workers(),
+        #                                         poisoned_workers,
+        #                                         replacement_method, args.get_poison_effort)
+        # print(distributed_train_dataset[1])
+        # print(len(distributed_train_dataset))
+        # train_data_loaders = generate_textdata_loaders_from_distributed_dataset(distributed_train_dataset, args.get_batch_size())
+
+        clients = create_clients(args, distributed_train_dataset, test_data_loader, distributed_train_dataset)
+
+        results, worker_selection = run_machine_learning(clients, args, poisoned_workers)
+        save_results(results, results_files[0])
+        save_results(worker_selection, worker_selections_files[0])
+
+        logger.remove(handler)
 
     # Distribute batches equal volume IID
-    # distributed_train_dataset = distribute_batches_equally(train_data_loader, args.get_num_workers())
-    distributed_train_dataset = distribute_batches_reduce_1_plus(train_data_loader, args.get_num_workers())
-    distributed_train_dataset = convert_distributed_data_into_numpy(distributed_train_dataset)
+    else:
+        distributed_train_dataset = distribute_batches_equally(train_data_loader, args.get_num_workers()) # list of clients, each client has list of batches, each batch have BATCH_SIZE batches
 
-    poisoned_workers = identify_random_elements(args.get_num_workers(), args.get_num_poisoned_workers())
-    distributed_train_dataset = poison_data(logger, distributed_train_dataset, args.get_num_workers(), poisoned_workers,
-                                            replacement_method, args.get_poison_effort)
+    # distributed_train_dataset = distribute_batches_reduce_1_plus(train_data_loader, args.get_num_workers())
+        # distributed_train_dataset = convert_distributed_data_into_numpy(distributed_train_dataset)  # list of clients, each client has list of tuples
 
-    train_data_loaders = generate_data_loaders_from_distributed_dataset(distributed_train_dataset,
-                                                                        args.get_batch_size())
+        poisoned_workers = identify_random_elements(args.get_num_workers(), args.get_num_poisoned_workers())
+        # distributed_train_dataset = poison_data(logger, distributed_train_dataset, args.get_num_workers(), poisoned_workers,
+        #                                         replacement_method, args.get_poison_effort)
+        #
+        # train_data_loaders = generate_data_loaders_from_distributed_dataset(distributed_train_dataset,
+        #                                                                     args.get_batch_size()) #
 
-    clients = create_clients(args, train_data_loaders, test_data_loader, distributed_train_dataset)
+        clients = create_clients(args, distributed_train_dataset, test_data_loader, distributed_train_dataset)
 
-    results, worker_selection = run_machine_learning(clients, args, poisoned_workers)
-    save_results(results, results_files[0])
-    save_results(worker_selection, worker_selections_files[0])
+        results, worker_selection = run_machine_learning(clients, args, poisoned_workers)
+        save_results(results, results_files[0])
+        save_results(worker_selection, worker_selections_files[0])
 
-    logger.remove(handler)
+        logger.remove(handler)

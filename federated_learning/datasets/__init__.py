@@ -4,5 +4,5 @@ from .cifar10 import CIFAR10Dataset
 from .cifar100 import CIFAR100Dataset
 from .fashion_mnist import FashionMNISTDataset
 from .stl10 import STL10Dataset
-from .amazon import AmazonDataset
+from .agnews import AGNewsDataset
 # from .trec import TRECDataset

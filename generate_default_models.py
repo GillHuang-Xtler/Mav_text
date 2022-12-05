@@ -5,7 +5,7 @@ from federated_learning.nets import FashionMNISTCNN
 from federated_learning.nets import FashionMNISTResNet
 from federated_learning.nets import Cifar10ResNet
 from federated_learning.nets import Cifar100VGG
-from federated_learning.nets import MNISTCNN, STL10VGG
+from federated_learning.nets import MNISTCNN, STL10VGG, AGNewsFastText
 import os
 import torch
 from loguru import logger
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     torch.save(STL10VGG().state_dict(), full_save_path)
 
     # # ---------------------------------
-    # # ----------- TRECCNN ---------
+    # # ----------- AGNEWSFASTTEXT ---------
     # # ---------------------------------
-    # full_save_path = os.path.join(args.get_default_model_folder_path(), "TRECCNN.model")
-    # torch.save(TRECCNN().state_dict(), full_save_path)
+    full_save_path = os.path.join(args.get_default_model_folder_path(), "AGNEWSFASTTEXT.model")
+    torch.save(AGNewsFastText(vocab_size = 95810, embed_dim = 64, num_class = 4).state_dict(), full_save_path)
